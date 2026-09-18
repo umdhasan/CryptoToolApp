@@ -2,12 +2,34 @@ package com.example.cryptotool.engine
 
 import java.security.MessageDigest
 
+// সম্ভাব্যতা ও গাণিতিক বিশ্লেষণের ডেটা ক্লাস
+data class MathAnalysis(
+    val decimalValue: Long,
+    val isInstantCrash: Boolean,
+    val remainder33: Long,
+    val rawMultiplier: Double,
+    val finalMultiplier: Double,
+    val winProbability: Double
+)
+
 object HashEngine {
 
-    // ৪টি সিড একত্র করে SHA-512 হ্যাশ তৈরি করার ফাংশন
+    // ১. প্রি-রাউন্ড সার্ভার সিড হ্যাশ ভেরিফিকেশন (SHA-256)
+    fun verifyServerSeedHash(serverSeed: String, publishedHash: String): Boolean {
+        if (serverSeed.isBlank() || publishedHash.isBlank()) return false
+        val computedHash = sha256(serverSeed.trim())
+        return computedHash.equals(publishedHash.trim(), ignoreCase = true)
+    }
+
+    private fun sha256(input: String): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val bytes = md.digest(input.toByteArray(Charsets.UTF_8))
+        return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    // ২. সার্ভার সিড ও ৩ জন খেলোয়াড়ের সিড মিলিয়ে SHA-512 হ্যাশ
     fun generateSha512(serverSeed: String, c1: String, c2: String, c3: String): String {
         return try {
-            // সার্ভার সিড ও ৩ জন খেলোয়াড়ের সিড সরাসরি যুক্ত করা হয়
             val combinedInput = serverSeed.trim() + c1.trim() + c2.trim() + c3.trim()
             val md = MessageDigest.getInstance("SHA-512")
             val bytes = md.digest(combinedInput.toByteArray(Charsets.UTF_8))
@@ -17,24 +39,42 @@ object HashEngine {
         }
     }
 
-    // Aviator / Spribe স্ট্যান্ডার্ড ক্র্যাশ পয়েন্ট ফর্মুলা
-    fun calculateCrashPoint(hash: String): Double {
+    // ৩. ৩% হাউস এজ ও ১.০০x ক্র্যাশ গাণিতিক বিশ্লেষণ
+    fun analyzeCrashPoint(hash: String): MathAnalysis {
         return try {
-            // হ্যাশের প্রথম ১৩টি হেক্স ক্যারেক্টার (৫২ বিট)
             val subHash = hash.substring(0, 13)
-            val decimalValue = subHash.toLong(16).toDouble()
+            val decimalValue = subHash.toLong(16)
             val twoPower52 = Math.pow(2.0, 52.0)
 
-            // যদি মানটি ৩৩ দ্বারা নিঃশেষে বিভাজ্য হয় তবে ক্র্যাশ পয়েন্ট ১.০০x
-            if (decimalValue.toLong() % 33L == 0L) {
-                return 1.00
+            val remainder = decimalValue % 33L
+            val isInstantCrash = (remainder == 0L)
+
+            if (isInstantCrash) {
+                return MathAnalysis(
+                    decimalValue = decimalValue,
+                    isInstantCrash = true,
+                    remainder33 = remainder,
+                    rawMultiplier = 1.00,
+                    finalMultiplier = 1.00,
+                    winProbability = 3.03
+                )
             }
 
-            // ৩% হাউস এজ সমীকরণ: (100 - 3) * 2^52 / (2^52 - decimalValue)
-            val result = (0.97 * twoPower52) / (twoPower52 - decimalValue)
-            Math.floor(result * 100.0) / 100.0
+            // স্ট্যান্ডার্ড ৩% হাউস এজ সমীকরণ: (0.97 * 2^52) / (2^52 - X)
+            val raw = (0.97 * twoPower52) / (twoPower52 - decimalValue.toDouble())
+            val finalVal = Math.floor(raw * 100.0) / 100.0
+            val probability = if (finalVal > 0) (0.97 / finalVal) * 100.0 else 0.0
+
+            MathAnalysis(
+                decimalValue = decimalValue,
+                isInstantCrash = false,
+                remainder33 = remainder,
+                rawMultiplier = Math.floor(raw * 1000.0) / 1000.0,
+                finalMultiplier = finalVal,
+                winProbability = Math.floor(probability * 100.0) / 100.0
+            )
         } catch (e: Exception) {
-            1.00
+            MathAnalysis(0L, false, -1L, 1.00, 1.00, 0.0)
         }
     }
 }
