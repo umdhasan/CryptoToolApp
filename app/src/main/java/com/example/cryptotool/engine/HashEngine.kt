@@ -2,7 +2,6 @@ package com.example.cryptotool.engine
 
 import java.security.MessageDigest
 
-// সম্ভাব্যতা ও গাণিতিক বিশ্লেষণের ডেটা ক্লাস
 data class MathAnalysis(
     val decimalValue: Long,
     val isInstantCrash: Boolean,
@@ -14,7 +13,7 @@ data class MathAnalysis(
 
 object HashEngine {
 
-    // ১. প্রি-রাউন্ড সার্ভার সিড হ্যাশ ভেরিফিকেশন (SHA-256)
+    // সার্ভার সিড প্রি-ভেরিফিকেশন (SHA-256)
     fun verifyServerSeedHash(serverSeed: String, publishedHash: String): Boolean {
         if (serverSeed.isBlank() || publishedHash.isBlank()) return false
         val computedHash = sha256(serverSeed.trim())
@@ -27,7 +26,7 @@ object HashEngine {
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    // ২. সার্ভার সিড ও ৩ জন খেলোয়াড়ের সিড মিলিয়ে SHA-512 হ্যাশ
+    // ৪টি সিড মিলিয়ে SHA-512 হ্যাশ তৈরি
     fun generateSha512(serverSeed: String, c1: String, c2: String, c3: String): String {
         return try {
             val combinedInput = serverSeed.trim() + c1.trim() + c2.trim() + c3.trim()
@@ -39,7 +38,7 @@ object HashEngine {
         }
     }
 
-    // ৩. ৩% হাউস এজ ও ১.০০x ক্র্যাশ গাণিতিক বিশ্লেষণ
+    // ক্র্যাশ পয়েন্ট এবং ৩% হাউস এজ সমীকরণ বিশ্লেষণ
     fun analyzeCrashPoint(hash: String): MathAnalysis {
         return try {
             val subHash = hash.substring(0, 13)
@@ -60,7 +59,6 @@ object HashEngine {
                 )
             }
 
-            // স্ট্যান্ডার্ড ৩% হাউস এজ সমীকরণ: (0.97 * 2^52) / (2^52 - X)
             val raw = (0.97 * twoPower52) / (twoPower52 - decimalValue.toDouble())
             val finalVal = Math.floor(raw * 100.0) / 100.0
             val probability = if (finalVal > 0) (0.97 / finalVal) * 100.0 else 0.0
@@ -76,5 +74,12 @@ object HashEngine {
         } catch (e: Exception) {
             MathAnalysis(0L, false, -1L, 1.00, 1.00, 0.0)
         }
+    }
+
+    // কাঙ্ক্ষিত টার্গেট গুণকের গাণিতিক সম্ভাবনা বের করা
+    fun estimateTargetProbability(targetMultiplier: Double): Double {
+        if (targetMultiplier <= 1.00) return 100.0
+        val prob = (0.97 / targetMultiplier) * 100.0
+        return Math.floor(prob * 100.0) / 100.0
     }
 }
