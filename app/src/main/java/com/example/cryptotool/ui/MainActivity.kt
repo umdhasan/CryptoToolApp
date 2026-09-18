@@ -27,11 +27,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ProvablyFairScreen() {
     var serverSeed by remember { mutableStateOf("") }
-    var clientSeed by remember { mutableStateOf("") }
-    var nonce by remember { mutableStateOf("") }
+    var client1 by remember { mutableStateOf("") }
+    var client2 by remember { mutableStateOf("") }
+    var client3 by remember { mutableStateOf("") }
 
     var resultMultiplier by remember { mutableStateOf("") }
-    var hmacHash by remember { mutableStateOf("") }
+    var sha512Hash by remember { mutableStateOf("") }
+    var hexVal by remember { mutableStateOf("") }
+    var decVal by remember { mutableStateOf("") }
 
     val darkBg = Color(0xFF121212)
     val cardBg = Color(0xFF1E1E1E)
@@ -41,25 +44,24 @@ fun ProvablyFairScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(darkBg)
-            .padding(20.dp)
+            .padding(16.dp)
             .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Provably Fair Verifier",
+            text = "Aviator Fair Verifier",
             style = MaterialTheme.typography.headlineMedium,
             color = neonGreen
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = serverSeed,
             onValueChange = { serverSeed = it },
-            label = { Text("Server Seed (গোপন কি)", color = Color.Gray) },
+            label = { Text("Server Seed", color = Color.Gray) },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
@@ -69,12 +71,12 @@ fun ProvablyFairScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = clientSeed,
-            onValueChange = { clientSeed = it },
-            label = { Text("Client Seed", color = Color.Gray) },
+            value = client1,
+            onValueChange = { client1 = it },
+            label = { Text("Player 1 Seed", color = Color.Gray) },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
@@ -84,12 +86,12 @@ fun ProvablyFairScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = nonce,
-            onValueChange = { nonce = it },
-            label = { Text("Nonce (রাউন্ড নম্বর)", color = Color.Gray) },
+            value = client2,
+            onValueChange = { client2 = it },
+            label = { Text("Player 2 Seed", color = Color.Gray) },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
@@ -99,54 +101,72 @@ fun ProvablyFairScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = client3,
+            onValueChange = { client3 = it },
+            label = { Text("Player 3 Seed", color = Color.Gray) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedBorderColor = neonGreen,
+                unfocusedBorderColor = Color.Gray
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
                 if (serverSeed.isNotBlank()) {
-                    val message = if (nonce.isNotBlank()) "$clientSeed:$nonce" else clientSeed
-                    val hash = HashEngine.generateHmacSha256(serverSeed.trim(), message.trim())
-                    hmacHash = hash
-                    val crashPoint = HashEngine.calculateCrashPoint(hash)
-                    resultMultiplier = "${crashPoint}x"
-                } else {
-                    resultMultiplier = "Server Seed দিন"
-                    hmacHash = ""
+                    val hash = HashEngine.generateSha512(serverSeed, client1, client2, client3)
+                    sha512Hash = hash
+                    if (hash.length >= 13) {
+                        val sub = hash.substring(0, 13)
+                        hexVal = sub
+                        decVal = sub.toLong(16).toString()
+                        val crashPoint = HashEngine.calculateCrashPoint(hash)
+                        resultMultiplier = "${crashPoint}x"
+                    }
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = neonGreen),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("ফলাফল ও হ্যাশ যাচাই করুন", color = Color.Black)
+            Text("ফলাফল যাচাই করুন", color = Color.Black)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = cardBg),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "ক্র্যাশ গুণক (Multiplier):",
-                    color = Color.LightGray,
-                    style = MaterialTheme.typography.labelLarge
-                )
+                Text(text = "ক্র্যাশ গুণক (Result):", color = Color.LightGray)
                 Text(
                     text = resultMultiplier.ifEmpty { "---" },
                     color = neonGreen,
                     style = MaterialTheme.typography.headlineLarge
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
+                Text(text = "Hex (প্রথম ১৩ ক্যারেক্টার):", color = Color.LightGray)
+                Text(text = hexVal.ifEmpty { "---" }, color = Color.White)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(text = "Decimal মান:", color = Color.LightGray)
+                Text(text = decVal.ifEmpty { "---" }, color = Color.White)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(text = "Combined SHA-512 Hash:", color = Color.LightGray)
                 Text(
-                    text = "প্রমাণিক HMAC-SHA256 হ্যাশ:",
-                    color = Color.LightGray,
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    text = hmacHash.ifEmpty { "এখানে সম্পূর্ণ হ্যাশ প্রদর্শিত হবে" },
+                    text = sha512Hash.ifEmpty { "---" },
                     color = Color.White,
                     style = MaterialTheme.typography.bodySmall
                 )
