@@ -13,7 +13,7 @@ data class MathAnalysis(
 
 object HashEngine {
 
-    // সার্ভার সিড প্রি-ভেরিফিকেশন (SHA-256)
+    // ১. সার্ভার সিড প্রি-ভেরিফিকেশন (SHA-256)
     fun verifyServerSeedHash(serverSeed: String, publishedHash: String): Boolean {
         if (serverSeed.isBlank() || publishedHash.isBlank()) return false
         val computedHash = sha256(serverSeed.trim())
@@ -26,7 +26,7 @@ object HashEngine {
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    // ৪টি সিড মিলিয়ে SHA-512 হ্যাশ তৈরি
+    // ২. সার্ভার সিড ও ৩ জন খেলোয়াড়ের সিড মিলিয়ে SHA-512 হ্যাশ
     fun generateSha512(serverSeed: String, c1: String, c2: String, c3: String): String {
         return try {
             val combinedInput = serverSeed.trim() + c1.trim() + c2.trim() + c3.trim()
@@ -38,7 +38,7 @@ object HashEngine {
         }
     }
 
-    // ক্র্যাশ পয়েন্ট এবং ৩% হাউস এজ সমীকরণ বিশ্লেষণ
+    // ৩. ৩% হাউস এজ ও ১.০০x ক্র্যাশ গাণিতিক বিশ্লেষণ
     fun analyzeCrashPoint(hash: String): MathAnalysis {
         return try {
             val subHash = hash.substring(0, 13)
@@ -59,6 +59,7 @@ object HashEngine {
                 )
             }
 
+            // ৩% হাউস এজ সূত্র: (0.97 * 2^52) / (2^52 - X)
             val raw = (0.97 * twoPower52) / (twoPower52 - decimalValue.toDouble())
             val finalVal = Math.floor(raw * 100.0) / 100.0
             val probability = if (finalVal > 0) (0.97 / finalVal) * 100.0 else 0.0
@@ -76,7 +77,7 @@ object HashEngine {
         }
     }
 
-    // কাঙ্ক্ষিত টার্গেট গুণকের গাণিতিক সম্ভাবনা বের করা
+    // ৪. টার্গেট গুণকের বাস্তব সম্ভাবনা (%) হিসাব
     fun estimateTargetProbability(targetMultiplier: Double): Double {
         if (targetMultiplier <= 1.00) return 100.0
         val prob = (0.97 / targetMultiplier) * 100.0
